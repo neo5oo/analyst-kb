@@ -45,15 +45,17 @@ hugo --gc --minify
 - `themes/hextra/` — исходники темы
 - `hugo.toml` — конфигурация сайта
 
-## Публикация в Vercel
+## Публикация в Netlify
 
 Рекомендуемые настройки:
 
-- Framework Preset: `Hugo`
 - Build Command: `hugo --gc --minify`
-- Output Directory: `public`
+- Publish Directory: `public`
+- Environment variable: `HUGO_VERSION=0.160.1`
 
-Перед прод-деплоем обновите `baseURL` в `hugo.toml` на ваш публичный домен.
+В проекте уже добавлен `netlify.toml`, поэтому при импорте репозитория в Netlify настройки подтянутся автоматически.
+
+Перед прод-деплоем обновите `baseURL` в `hugo.toml` на ваш публичный домен Netlify.
 
 ## Лицензия
 
