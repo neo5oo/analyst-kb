@@ -1,0 +1,107 @@
+{{- $current := .context -}}
+{{- $disableSidebar := .disableSidebar | default false -}}
+{{- $displayPlaceholder := .displayPlaceholder | default false -}}
+
+{{- if $current.Params.sidebar.hide -}}
+  {{- $disableSidebar = true -}}
+  {{- $displayPlaceholder = false -}}
+{{- end -}}
+
+{{- $sidebarClass := "hx:md:sticky" -}}
+{{- if $disableSidebar -}}
+  {{- if $displayPlaceholder -}}
+    {{- $sidebarClass = "hx:md:hidden hx:xl:block" -}}
+  {{- else -}}
+    {{- $sidebarClass = "hx:md:hidden" -}}
+  {{- end -}}
+{{- end -}}
+
+<aside class="hextra-sidebar-container hx:flex hx:flex-col hx:print:hidden hx:md:top-16 hx:md:shrink-0 hx:md:w-72 hx:md:self-start hx:max-md:[transform:translate3d(0,-100%,0)] {{ $sidebarClass }}">
+  {{- if (site.Params.search.enable | default true) -}}
+    <div class="hx:px-4 hx:pt-4 hx:md:hidden">
+      {{ partial "search.html" (dict "location" "sidebar") }}
+    </div>
+  {{- end -}}
+
+  <div class="hextra-scrollbar hx:overflow-y-auto hx:overflow-x-hidden hx:p-4 hx:grow hx:md:h-[calc(100vh-var(--navbar-height)-var(--menu-height))]">
+    {{- if $disableSidebar -}}
+      {{- if $displayPlaceholder }}<div class="hx:max-xl:hidden hx:h-0 hx:w-72 hx:shrink-0"></div>{{ end -}}
+      {{ .context.Store.Set "enableFooterSwitches" true }}
+    {{- else -}}
+      <ul class="hx:flex hx:flex-col hx:gap-1">
+        {{- $rootSections := where site.Home.Sections "Params.sidebar.exclude" "!=" true -}}
+        {{- $rootSections = where $rootSections "Draft" "!=" true -}}
+        {{- $rootSections = where $rootSections "Section" "!=" "index" -}}
+        {{- $rootPages := where site.Home.RegularPages "Params.sidebar.exclude" "!=" true -}}
+        {{- $rootPages = where $rootPages "Draft" "!=" true -}}
+        {{- $rootItems := union $rootSections $rootPages -}}
+        {{- $rootItems = sort (sort $rootItems "LinkTitle" "asc") "Weight" "asc" -}}
+        {{- range $rootItems -}}
+          {{- if .IsSection -}}
+            {{- template "kb-sidebar-section" dict "section" . "current" $current "level" 0 -}}
+          {{- else -}}
+            <li>{{ template "kb-sidebar-link" dict "node" . "current" $current "level" 0 }}</li>
+          {{- end -}}
+        {{- end -}}
+      </ul>
+    {{- end -}}
+  </div>
+</aside>
+
+{{- define "kb-sidebar-link" -}}
+  {{- $node := .node -}}
+  {{- $current := .current -}}
+  {{- $level := .level -}}
+  {{- $active := eq (strings.TrimSuffix "/" $current.RelPermalink) (strings.TrimSuffix "/" $node.RelPermalink) -}}
+  {{- $indentRem := add 0.5 (mul $level 0.75) -}}
+  <a
+    href="{{ $node.RelPermalink }}"
+    style="padding-inline-start: {{ $indentRem }}rem;"
+    class="hx:block hx:rounded-sm hx:py-1.5 hx:text-sm hx:transition-colors [word-break:break-word]
+    {{ if $active }}
+      hx:bg-primary-100 hx:font-semibold hx:text-primary-800 hx:dark:bg-primary-400/10 hx:dark:text-primary-400
+    {{ else }}
+      hx:text-gray-600 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:text-neutral-300 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50
+    {{ end }}"
+  >{{ partial "utils/title" $node }}</a>
+{{- end -}}
+
+{{- define "kb-sidebar-section" -}}
+  {{- $section := .section -}}
+  {{- $current := .current -}}
+  {{- $level := .level -}}
+  {{- if ge $level 6 -}}{{ return }}{{- end -}}
+
+  {{- $childSections := where $section.Sections "Params.sidebar.exclude" "!=" true -}}
+  {{- $childSections = where $childSections "Draft" "!=" true -}}
+  {{- $childPages := where $section.RegularPages "Params.sidebar.exclude" "!=" true -}}
+  {{- $childPages = where $childPages "Draft" "!=" true -}}
+  {{- $children := union $childSections $childPages -}}
+  {{- $children = sort (sort $children "LinkTitle" "asc") "Weight" "asc" -}}
+  {{- $hasChildren := gt (len $children) 0 -}}
+  {{- $open := or ($section.IsAncestor $current) (eq (strings.TrimSuffix "/" $current.RelPermalink) (strings.TrimSuffix "/" $section.RelPermalink)) -}}
+
+  <li class="hx:flex hx:flex-col">
+    {{- if $hasChildren -}}
+      <details class="hx:group kb-tree-details" {{ if $open }}open{{ end }}>
+        <summary class="hx:list-none hx:flex hx:items-center hx:justify-between hx:gap-2 hx:cursor-pointer hx:rounded-sm hx:py-1.5 hx:transition-colors hover:hx:bg-gray-100 hx:dark:hover:bg-primary-100/5">
+          <span class="hx:min-w-0 hx:grow">
+            {{- template "kb-sidebar-link" dict "node" $section "current" $current "level" $level -}}
+          </span>
+          <span class="kb-tree-chevron hx:mr-2 hx:shrink-0 hx:text-gray-500 hx:transition-transform">›</span>
+        </summary>
+        <ul class="hx:ltr:ml-2 hx:rtl:mr-2 hx:border-l hx:border-gray-200 hx:dark:border-neutral-800">
+          {{- range $children -}}
+            {{- if .IsSection -}}
+              {{- template "kb-sidebar-section" dict "section" . "current" $current "level" (add $level 1) -}}
+            {{- else -}}
+              <li>{{ template "kb-sidebar-link" dict "node" . "current" $current "level" (add $level 1) }}</li>
+            {{- end -}}
+          {{- end -}}
+        </ul>
+      </details>
+    {{- else -}}
+      {{ template "kb-sidebar-link" dict "node" $section "current" $current "level" $level }}
+    {{- end -}}
+  </li>
+{{- end -}}

@@ -1,0 +1,11 @@
+# Hugo build artifacts
+public/
+.hugo_build.lock
+resources/_gen/
+
+# Node tooling
+node_modules/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

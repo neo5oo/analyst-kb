@@ -1,0 +1,347 @@
+{{- $quiz := .Params.quiz -}}
+{{- if and $quiz (gt (len $quiz.questions) 0) -}}
+  {{- $quizID := printf "quiz-%s" (.RelPermalink | anchorize) -}}
+  <section id="{{ $quizID }}" class="kb-quiz hx:mt-14" data-quiz-root data-quiz-mode="single">
+    <div class="kb-quiz__header">
+      <h2 class="kb-quiz__title">{{ $quiz.title | default "Проверка знаний" }}</h2>
+      <span class="kb-quiz__progress-badge" data-quiz-progress-label aria-live="polite">
+        Вопрос 1 из {{ len $quiz.questions }}
+      </span>
+    </div>
+
+    <div class="kb-quiz__progress-track" aria-hidden="true">
+      <div class="kb-quiz__progress-fill" data-quiz-progress-fill></div>
+    </div>
+
+    <div class="kb-quiz__body" data-quiz-stage="question">
+      <div class="kb-quiz__questions" data-quiz-questions>
+        {{- range $qIndex, $question := $quiz.questions -}}
+          <fieldset
+            class="kb-quiz__question {{ if ne $qIndex 0 }}hx:hidden{{ end }}"
+            data-quiz-question
+            data-question-index="{{ $qIndex }}"
+            aria-labelledby="{{ $quizID }}-question-{{ $qIndex }}"
+          >
+            <legend id="{{ $quizID }}-question-{{ $qIndex }}" class="kb-quiz__question-title">
+              {{ $question.question }}
+            </legend>
+
+            <div class="kb-quiz__options" role="radiogroup" aria-label="Варианты ответа">
+              {{- range $oIndex, $option := $question.options -}}
+                {{- $inputID := printf "%s-q%d-o%d" $quizID $qIndex $oIndex -}}
+                <label for="{{ $inputID }}" class="kb-quiz__option" data-quiz-option>
+                  <input
+                    id="{{ $inputID }}"
+                    class="kb-quiz__input"
+                    type="radio"
+                    name="{{ $quizID }}-q{{ $qIndex }}"
+                    value="{{ $oIndex }}"
+                  />
+                  <span class="kb-quiz__indicator" aria-hidden="true"></span>
+                  <span class="kb-quiz__option-text">{{ $option }}</span>
+                </label>
+              {{- end -}}
+            </div>
+
+            <div class="kb-quiz__feedback hx:hidden" data-quiz-feedback aria-live="polite">
+              <div class="kb-quiz__feedback-title" data-quiz-feedback-title></div>
+              <div class="kb-quiz__feedback-expl">{{ $question.explanation | default "Объяснение не указано." }}</div>
+            </div>
+
+            <input type="hidden" value="{{ $question.correctIndex }}" data-quiz-correct-index />
+          </fieldset>
+        {{- end -}}
+      </div>
+
+      <div class="kb-quiz__actions">
+        <button
+          type="button"
+          class="kb-quiz__btn kb-quiz__btn--primary"
+          data-quiz-action
+          disabled
+          aria-disabled="true"
+        >
+          Ответить
+        </button>
+      </div>
+    </div>
+
+    <div class="kb-quiz__result hx:hidden" data-quiz-result-screen>
+      <p class="kb-quiz__result-score" data-quiz-result-score></p>
+      <p class="kb-quiz__result-status" data-quiz-result-status></p>
+      <p class="kb-quiz__result-message" data-quiz-result-message></p>
+
+      <div class="kb-quiz__mistakes hx:hidden" data-quiz-mistakes-wrap>
+        <h3 class="kb-quiz__mistakes-title">Вопросы, где были ошибки</h3>
+        <ul class="kb-quiz__mistakes-list" data-quiz-mistakes-list></ul>
+      </div>
+
+      <div class="kb-quiz__actions">
+        <button type="button" class="kb-quiz__btn kb-quiz__btn--secondary" data-quiz-restart>
+          Пройти заново
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (() => {
+      const root = document.getElementById("{{ $quizID }}");
+      if (!root) return;
+
+      const questions = Array.from(root.querySelectorAll("[data-quiz-question]"));
+      if (!questions.length) return;
+
+      const mode = root.getAttribute("data-quiz-mode") || "single";
+      const passingScore = Number({{ $quiz.passingScore | default 0 }});
+
+      const progressLabel = root.querySelector("[data-quiz-progress-label]");
+      const progressFill = root.querySelector("[data-quiz-progress-fill]");
+      const actionBtn = root.querySelector("[data-quiz-action]");
+      const restartBtn = root.querySelector("[data-quiz-restart]");
+
+      const resultScreen = root.querySelector("[data-quiz-result-screen]");
+      const resultScore = root.querySelector("[data-quiz-result-score]");
+      const resultStatus = root.querySelector("[data-quiz-result-status]");
+      const resultMessage = root.querySelector("[data-quiz-result-message]");
+      const mistakesWrap = root.querySelector("[data-quiz-mistakes-wrap]");
+      const mistakesList = root.querySelector("[data-quiz-mistakes-list]");
+
+      let currentIndex = 0;
+      let phase = "answer";
+      const answers = new Array(questions.length).fill(null);
+      const shownFeedback = new Array(questions.length).fill(false);
+
+      const getQuestionByIndex = (index) => questions[index];
+
+      const getSelectedOption = (questionEl) => {
+        const selectedInput = questionEl.querySelector('input[type="radio"]:checked');
+        if (!selectedInput) return null;
+        return Number(selectedInput.value);
+      };
+
+      const getCorrectOption = (questionEl) => {
+        const correctRaw = questionEl.querySelector("[data-quiz-correct-index]")?.value;
+        return Number(correctRaw ?? -1);
+      };
+
+      const optionElements = (questionEl) => Array.from(questionEl.querySelectorAll("[data-quiz-option]"));
+
+      const setOptionStateClasses = (questionEl, stateMode) => {
+        const selected = getSelectedOption(questionEl);
+        const correct = getCorrectOption(questionEl);
+
+        optionElements(questionEl).forEach((optionEl) => {
+          optionEl.classList.remove("is-selected", "is-correct", "is-wrong", "is-dimmed");
+          const input = optionEl.querySelector('input[type="radio"]');
+          const value = Number(input?.value ?? -1);
+
+          if (stateMode === "answering") {
+            if (value === selected) optionEl.classList.add("is-selected");
+            return;
+          }
+
+          if (value === correct) optionEl.classList.add("is-correct");
+          if (selected !== null && selected !== correct && value === selected) optionEl.classList.add("is-wrong");
+          if (selected !== null && value !== correct && value !== selected) optionEl.classList.add("is-dimmed");
+        });
+      };
+
+      const setQuestionVisible = (index) => {
+        questions.forEach((questionEl, qIndex) => {
+          questionEl.classList.toggle("hx:hidden", qIndex !== index);
+        });
+      };
+
+      const updateProgress = () => {
+        const total = questions.length;
+        const done = phase === "answer" ? currentIndex : currentIndex + 1;
+        const percent = Math.min(100, Math.max(0, (done / total) * 100));
+        progressFill.style.width = `${percent}%`;
+        if (progressLabel) progressLabel.textContent = `Вопрос ${currentIndex + 1} из ${total}`;
+      };
+
+      const updateActionButton = () => {
+        const currentQuestion = getQuestionByIndex(currentIndex);
+        const selected = getSelectedOption(currentQuestion);
+
+        if (phase === "answer") {
+          actionBtn.textContent = "Ответить";
+          const disabled = selected === null;
+          actionBtn.disabled = disabled;
+          actionBtn.setAttribute("aria-disabled", disabled ? "true" : "false");
+          return;
+        }
+
+        const onLast = currentIndex === questions.length - 1;
+        actionBtn.textContent = onLast ? "Показать результат" : "Далее";
+        actionBtn.disabled = false;
+        actionBtn.setAttribute("aria-disabled", "false");
+      };
+
+      const showFeedbackForCurrent = () => {
+        const questionEl = getQuestionByIndex(currentIndex);
+        const selected = getSelectedOption(questionEl);
+        const correct = getCorrectOption(questionEl);
+        const feedback = questionEl.querySelector("[data-quiz-feedback]");
+        const feedbackTitle = questionEl.querySelector("[data-quiz-feedback-title]");
+
+        if (!feedback || !feedbackTitle) return;
+
+        const isCorrect = selected === correct;
+        feedback.classList.remove("hx:hidden", "is-correct", "is-wrong");
+        feedback.classList.add(isCorrect ? "is-correct" : "is-wrong");
+        feedbackTitle.textContent = isCorrect ? "Верно" : "Неверно";
+
+        setOptionStateClasses(questionEl, "revealed");
+        shownFeedback[currentIndex] = true;
+      };
+
+      const moveNext = () => {
+        if (mode === "all") return;
+        currentIndex += 1;
+        phase = "answer";
+        renderQuestionState();
+      };
+
+      const createMistakeItem = (index, questionEl, selected, correct) => {
+        const item = document.createElement("li");
+        item.className = "kb-quiz__mistake-item";
+
+        const q = document.createElement("p");
+        q.className = "kb-quiz__mistake-question";
+        q.textContent = `${index + 1}. ${questionEl.querySelector(".kb-quiz__question-title")?.textContent || "Вопрос"}`;
+
+        const picked = document.createElement("p");
+        picked.className = "kb-quiz__mistake-picked";
+        const selectedText = selected === null ? "не выбран" : questionEl.querySelector(`input[value="${selected}"]`)?.closest("[data-quiz-option]")?.querySelector(".kb-quiz__option-text")?.textContent || "не выбран";
+        const correctText = questionEl.querySelector(`input[value="${correct}"]`)?.closest("[data-quiz-option]")?.querySelector(".kb-quiz__option-text")?.textContent || "не указан";
+        picked.textContent = `Ваш ответ: ${selectedText}. Правильный ответ: ${correctText}.`;
+
+        const expl = document.createElement("p");
+        expl.className = "kb-quiz__mistake-expl";
+        expl.textContent = questionEl.querySelector(".kb-quiz__feedback-expl")?.textContent || "Объяснение не указано.";
+
+        item.appendChild(q);
+        item.appendChild(picked);
+        item.appendChild(expl);
+        return item;
+      };
+
+      const renderResult = () => {
+        let score = 0;
+        const mistakes = [];
+
+        questions.forEach((questionEl, index) => {
+          const selected = answers[index];
+          const correct = getCorrectOption(questionEl);
+          if (selected === correct) {
+            score += 1;
+          } else {
+            mistakes.push({ index, questionEl, selected, correct });
+          }
+        });
+
+        const required = passingScore > 0 ? passingScore : questions.length;
+        const passed = score >= required;
+
+        resultScore.textContent = `${score} из ${questions.length}`;
+        resultStatus.textContent = passed ? "Тест пройден" : "Тест не пройден";
+        resultStatus.classList.toggle("is-pass", passed);
+        resultStatus.classList.toggle("is-fail", !passed);
+        resultMessage.textContent = passed ? "Отлично, тема усвоена" : "Стоит пройти тему еще раз";
+
+        mistakesList.innerHTML = "";
+        if (mistakes.length) {
+          mistakes.forEach((m) => {
+            mistakesList.appendChild(createMistakeItem(m.index, m.questionEl, m.selected, m.correct));
+          });
+          mistakesWrap.classList.remove("hx:hidden");
+        } else {
+          mistakesWrap.classList.add("hx:hidden");
+        }
+
+      };
+
+      const showResultScreen = () => {
+        root.querySelector("[data-quiz-stage='question']")?.classList.add("hx:hidden");
+        resultScreen.classList.remove("hx:hidden");
+        progressFill.style.width = "100%";
+        if (progressLabel) progressLabel.textContent = "Результат";
+        actionBtn.classList.add("hx:hidden");
+        renderResult();
+      };
+
+      const renderQuestionState = () => {
+        setQuestionVisible(currentIndex);
+        updateProgress();
+        updateActionButton();
+
+        const currentQuestion = getQuestionByIndex(currentIndex);
+        if (!shownFeedback[currentIndex]) {
+          const feedback = currentQuestion.querySelector("[data-quiz-feedback]");
+          feedback?.classList.add("hx:hidden");
+          setOptionStateClasses(currentQuestion, "answering");
+        } else {
+          showFeedbackForCurrent();
+        }
+      };
+
+      questions.forEach((questionEl, index) => {
+        questionEl.querySelectorAll('input[type="radio"]').forEach((input) => {
+          input.addEventListener("change", () => {
+            answers[index] = Number(input.value);
+            if (phase === "answer" && currentIndex === index) {
+              setOptionStateClasses(questionEl, "answering");
+              updateActionButton();
+            }
+          });
+        });
+      });
+
+      actionBtn.addEventListener("click", () => {
+        const currentQuestion = getQuestionByIndex(currentIndex);
+
+        if (phase === "answer") {
+          const selected = getSelectedOption(currentQuestion);
+          if (selected === null) return;
+          answers[currentIndex] = selected;
+          phase = "review";
+          showFeedbackForCurrent();
+          updateActionButton();
+          return;
+        }
+
+        if (currentIndex === questions.length - 1) {
+          showResultScreen();
+          return;
+        }
+
+        moveNext();
+      });
+
+      restartBtn.addEventListener("click", () => {
+        currentIndex = 0;
+        phase = "answer";
+        answers.fill(null);
+        shownFeedback.fill(false);
+
+        questions.forEach((questionEl) => {
+          questionEl.classList.remove("hx:hidden");
+          questionEl.querySelectorAll('input[type="radio"]').forEach((input) => {
+            input.checked = false;
+          });
+          questionEl.querySelector("[data-quiz-feedback]")?.classList.add("hx:hidden");
+          setOptionStateClasses(questionEl, "answering");
+        });
+
+        resultScreen.classList.add("hx:hidden");
+        root.querySelector("[data-quiz-stage='question']")?.classList.remove("hx:hidden");
+        actionBtn.classList.remove("hx:hidden");
+        renderQuestionState();
+      });
+
+      renderQuestionState();
+    })();
+  </script>
+{{- end -}}

@@ -1,0 +1,26 @@
+{{- $pages := where (union .RegularPages .Sections) "Params.sidebar.exclude" "!=" true -}}
+{{- $pages = where $pages "Draft" "!=" true -}}
+{{- if gt (len $pages) 0 -}}
+  <div class="hx:mt-8 hx:grid hx:grid-cols-1 hx:gap-4 hx:md:grid-cols-2">
+    {{- range sort $pages "Weight" "asc" -}}
+      {{- $title := partial "utils/title" . -}}
+      {{- $description := .Description | default "" | plainify | replaceRE "\\s+" " " | strings.TrimSpace -}}
+      {{- $descriptionLength := strings.CountRunes $description -}}
+      <a
+        class="hextra-card hx:group hx:flex hx:min-h-[92px] hx:flex-col hx:justify-between hx:rounded-xl hx:border hx:border-gray-200 hx:bg-white/90 hx:p-4 hx:no-underline hx:transition hx:hover:border-primary-400/50 hx:hover:shadow-sm hx:dark:border-neutral-800 hx:dark:bg-neutral-900 hx:dark:hover:border-primary-500/40"
+        href="{{ .RelPermalink }}"
+      >
+        <div class="hx:font-semibold hx:leading-6 hx:text-gray-900 hx:group-hover:text-primary-600 hx:dark:text-gray-100 hx:dark:group-hover:text-primary-400">{{ $title }}</div>
+        {{- if $description -}}
+          <div class="hx:mt-2 hx:text-sm hx:leading-5 hx:text-gray-600 hx:dark:text-gray-400">
+            {{- if gt $descriptionLength 100 -}}
+              {{- printf "%s..." (strings.Substr $description 0 100) -}}
+            {{- else -}}
+              {{- $description -}}
+            {{- end -}}
+          </div>
+        {{- end -}}
+      </a>
+    {{- end -}}
+  </div>
+{{- end -}}

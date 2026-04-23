@@ -1,0 +1,188 @@
+{{- /* Mermaid */ -}}
+
+{{- $mermaidBase := "" -}}
+{{- $useDefaultCdn := true -}}
+{{- with site.Params.mermaid.base -}}
+  {{- $mermaidBase = . -}}
+  {{- $useDefaultCdn = false -}}
+{{- end -}}
+
+{{- $mermaidJsAsset := "" -}}
+{{- with site.Params.mermaid.js -}}
+  {{- $mermaidJsAsset = . -}}
+{{- end -}}
+
+{{- /* If only js is set without base, use local asset loading */ -}}
+{{- if and $useDefaultCdn (ne $mermaidJsAsset "") -}}
+  {{- $useDefaultCdn = false -}}
+{{- end -}}
+
+{{- /* Set default CDN base if needed */ -}}
+{{- if $useDefaultCdn -}}
+  {{- $mermaidBase = "https://cdn.jsdelivr.net/npm/mermaid@latest/dist" -}}
+{{- end -}}
+
+{{- $isRemoteBase := or (strings.HasPrefix $mermaidBase "http://") (strings.HasPrefix $mermaidBase "https://") -}}
+{{- $minSuffix := cond hugo.IsProduction ".min" "" -}}
+
+{{- /* JS retrieval: get raw JS from either local asset or remote, then process */ -}}
+{{- if $isRemoteBase -}}
+  {{- $jsPath := cond (ne $mermaidJsAsset "") $mermaidJsAsset (printf "mermaid%s.js" $minSuffix) -}}
+  {{- $mermaidJsUrl := urls.JoinPath $mermaidBase $jsPath -}}
+  {{- with try (resources.GetRemote $mermaidJsUrl) -}}
+    {{- with .Err -}}
+      {{- errorf "Could not retrieve Mermaid js file from %s. Reason: %s." $mermaidJsUrl . -}}
+    {{- else with .Value -}}
+      {{- with resources.Copy (printf "js/mermaid%s.js" $minSuffix) . -}}
+        {{- $mermaidJs := . | fingerprint -}}
+        <script defer src="{{ $mermaidJs.RelPermalink }}" integrity="{{ $mermaidJs.Data.Integrity }}" crossorigin="anonymous"></script>
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- else if $mermaidJsAsset -}}
+  {{- with resources.Get $mermaidJsAsset -}}
+    {{- $mermaidJs := . | fingerprint -}}
+    <script defer src="{{ $mermaidJs.RelPermalink }}" integrity="{{ $mermaidJs.Data.Integrity }}" crossorigin="anonymous"></script>
+  {{- else -}}
+    {{- errorf "Mermaid js asset not found at %q" $mermaidJsAsset -}}
+  {{- end -}}
+{{- end -}}
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    if (!window.mermaid) return;
+
+    const getTheme = () =>
+      document.documentElement.classList.contains("dark") ? "dark" : "default";
+
+    const diagramBlocks = Array.from(document.querySelectorAll("pre.mermaid"));
+    if (!diagramBlocks.length) return;
+
+    diagramBlocks.forEach((el, index) => {
+      if (!el.dataset.original) {
+        el.dataset.original = el.textContent || "";
+      }
+      el.dataset.mermaidIndex = String(index);
+      el.classList.add("kb-mermaid-diagram");
+      el.setAttribute("tabindex", "0");
+      el.setAttribute("title", "Click to enlarge");
+    });
+
+    const ensureZoomModal = () => {
+      let modal = document.getElementById("kb-mermaid-modal");
+      if (modal) return modal;
+
+      modal = document.createElement("div");
+      modal.id = "kb-mermaid-modal";
+      modal.className = "kb-mermaid-modal";
+      modal.setAttribute("aria-hidden", "true");
+      modal.innerHTML = `
+        <div class="kb-mermaid-modal__backdrop" data-kb-mermaid-close></div>
+        <div class="kb-mermaid-modal__content" role="dialog" aria-modal="true" aria-label="Diagram preview">
+          <button type="button" class="kb-mermaid-modal__close" aria-label="Close diagram" data-kb-mermaid-close>&times;</button>
+          <div class="kb-mermaid-modal__canvas"></div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      modal.addEventListener("click", (event) => {
+        if (event.target instanceof HTMLElement && event.target.hasAttribute("data-kb-mermaid-close")) {
+          closeModal();
+        }
+      });
+
+      return modal;
+    };
+
+    const closeModal = () => {
+      const modal = ensureZoomModal();
+      modal.classList.remove("is-open");
+      modal.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("kb-mermaid-no-scroll");
+    };
+
+    const openModal = (sourceBlock) => {
+      const svg = sourceBlock.querySelector("svg");
+      if (!svg) return;
+
+      const modal = ensureZoomModal();
+      const canvas = modal.querySelector(".kb-mermaid-modal__canvas");
+      if (!canvas) return;
+
+      const clone = svg.cloneNode(true);
+      canvas.innerHTML = "";
+      canvas.appendChild(clone);
+
+      modal.classList.add("is-open");
+      modal.setAttribute("aria-hidden", "false");
+      document.body.classList.add("kb-mermaid-no-scroll");
+    };
+
+    const bindZoom = () => {
+      document.querySelectorAll("pre.kb-mermaid-diagram").forEach((block) => {
+        if (block.dataset.zoomBound === "true") return;
+        block.dataset.zoomBound = "true";
+
+        block.addEventListener("click", () => openModal(block));
+        block.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openModal(block);
+          }
+        });
+      });
+    };
+
+    const renderAll = async () => {
+      const theme = getTheme();
+      mermaid.initialize({
+        startOnLoad: false,
+        theme,
+      });
+
+      for (const block of diagramBlocks) {
+        const source = (block.dataset.original || "").trim();
+        if (!source) continue;
+
+        try {
+          const renderId = `kb-mermaid-${block.dataset.mermaidIndex}-${theme}`;
+          const renderResult = await mermaid.render(renderId, source);
+          const svg = typeof renderResult === "string" ? renderResult : renderResult.svg;
+          block.innerHTML = svg;
+
+          const svgEl = block.querySelector("svg");
+          if (svgEl) {
+            // Mermaid injects responsive styles (width/max-width) that can cause visual jitter.
+            // Strip inline style and lock dimensions from viewBox for stable rendering.
+            svgEl.removeAttribute("style");
+            const viewBox = svgEl.getAttribute("viewBox");
+            if (viewBox) {
+              const parts = viewBox.split(/\s+/).map(Number);
+              if (parts.length === 4 && Number.isFinite(parts[2]) && Number.isFinite(parts[3])) {
+                svgEl.setAttribute("width", String(parts[2]));
+                svgEl.setAttribute("height", String(parts[3]));
+              }
+            }
+            svgEl.setAttribute("preserveAspectRatio", "xMinYMin meet");
+            svgEl.style.maxWidth = "none";
+            svgEl.style.width = "auto";
+            svgEl.style.height = "auto";
+          }
+        } catch (error) {
+          console.error("Mermaid render failed:", error);
+          block.textContent = source;
+        }
+      }
+
+      bindZoom();
+    };
+
+    renderAll();
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeModal();
+      }
+    });
+  });
+</script>

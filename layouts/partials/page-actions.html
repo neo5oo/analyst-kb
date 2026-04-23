@@ -1,0 +1,73 @@
+<div class="hx:mt-6 hx:mb-5 hx:flex hx:flex-wrap hx:items-center hx:gap-2">
+  <button
+    type="button"
+    data-share-page
+    class="hx:inline-flex hx:items-center hx:gap-1.5 hx:rounded-md hx:border hx:border-gray-200 hx:bg-white hx:px-3 hx:py-1.5 hx:text-sm hx:font-medium hx:text-gray-700 hover:hx:bg-gray-50 hx:dark:border-neutral-800 hx:dark:bg-neutral-900 hx:dark:text-gray-200"
+  >
+    {{- partial "utils/icon.html" (dict "name" "share" "attributes" "class=\"hx:h-4 hx:w-4\"") -}}
+    <span data-share-label>Поделиться страницей</span>
+  </button>
+  <button
+    type="button"
+    data-read-toggle
+    data-page-key="{{ .RelPermalink }}"
+    class="hx:inline-flex hx:items-center hx:gap-1.5 hx:rounded-md hx:border hx:border-gray-200 hx:bg-white hx:px-3 hx:py-1.5 hx:text-sm hx:font-medium hx:text-gray-700 hover:hx:bg-gray-50 hx:dark:border-neutral-800 hx:dark:bg-neutral-900 hx:dark:text-gray-200"
+  >
+    <svg data-read-icon-off class="hx:h-4 hx:w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+      <circle cx="12" cy="12" r="8" />
+    </svg>
+    <svg data-read-icon-on class="hx:hidden hx:h-4 hx:w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <span data-read-label>Отметить прочитанным</span>
+  </button>
+</div>
+
+<script>
+  (() => {
+    const root = document.currentScript?.previousElementSibling;
+    if (!root) return;
+
+    const shareBtn = root.querySelector("[data-share-page]");
+    const readBtn = root.querySelector("[data-read-toggle]");
+    const readLabel = root.querySelector("[data-read-label]");
+    const readIconOff = root.querySelector("[data-read-icon-off]");
+    const readIconOn = root.querySelector("[data-read-icon-on]");
+    const shareLabel = root.querySelector("[data-share-label]");
+    const pageKey = readBtn?.getAttribute("data-page-key");
+    const storageKey = pageKey ? `read:${pageKey}` : null;
+
+    const setReadUI = (isRead) => {
+      if (!readLabel) return;
+      readLabel.textContent = isRead ? "Прочитано" : "Отметить прочитанным";
+      readBtn?.classList.toggle("hx:text-green-700", isRead);
+      readBtn?.classList.toggle("hx:dark:text-green-400", isRead);
+      readIconOff?.classList.toggle("hx:hidden", isRead);
+      readIconOn?.classList.toggle("hx:hidden", !isRead);
+    };
+
+    if (storageKey) {
+      setReadUI(localStorage.getItem(storageKey) === "1");
+    }
+
+    shareBtn?.addEventListener("click", async () => {
+      const url = window.location.href;
+      try {
+        await navigator.clipboard.writeText(url);
+        if (shareLabel) shareLabel.textContent = "Ссылка скопирована";
+        setTimeout(() => {
+          if (shareLabel) shareLabel.textContent = "Поделиться страницей";
+        }, 1200);
+      } catch (_) {
+        window.prompt("Скопируйте ссылку:", url);
+      }
+    });
+
+    readBtn?.addEventListener("click", () => {
+      if (!storageKey) return;
+      const current = localStorage.getItem(storageKey) === "1";
+      localStorage.setItem(storageKey, current ? "0" : "1");
+      setReadUI(!current);
+    });
+  })();
+</script>

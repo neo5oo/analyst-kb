@@ -1,0 +1,40 @@
+{{- $class := .Attributes.class | default "" -}}
+{{- $filename := .Attributes.filename | default "" -}}
+{{- $base_url := .Attributes.base_url | default "" -}}
+{{- $lang := .Attributes.lang | default .Type -}}
+
+{{- if eq $lang "http" -}}
+  <div class="hextra-code-block kb-http-code-block hx:relative hx:mt-6 hx:first:mt-0 hx:group/code">
+    {{- if $filename -}}
+      <div class="hextra-code-filename not-prose" dir="auto">
+        {{- if $base_url -}}
+          {{- $base_url = strings.TrimSuffix "/" $base_url -}}
+          {{- $filename = strings.TrimPrefix "/" $filename -}}
+          {{- $file_url := urls.JoinPath $base_url $filename -}}
+          <a class="hx:no-underline hx:inline-flex hx:items-center hx:gap-1" href="{{ $file_url }}" target="_blank" rel="noopener noreferrer">
+            <span>{{- $filename -}}</span>
+            {{- partial "utils/icon" (dict "name" "external-link" "attributes" "height=1em") -}}
+          </a>
+        {{- else -}}
+          {{- $filename -}}
+        {{- end -}}
+      </div>
+    {{- end -}}
+
+    <div class="kb-http-code-wrapper">
+      <pre tabindex="0"><code class="language-http" data-lang="http">{{ .Inner | htmlEscape | safeHTML }}</code></pre>
+    </div>
+
+    {{- if or (eq site.Params.highlight.copy.enable nil) (site.Params.highlight.copy.enable) -}}
+      {{- partialCached "components/codeblock-copy-button" (dict "filename" $filename) $filename -}}
+    {{- end -}}
+  </div>
+{{- else -}}
+  <div class="hextra-code-block hx:relative hx:mt-6 hx:first:mt-0 hx:group/code">
+    {{- partial "components/codeblock" (dict "filename" $filename "lang" $lang "base_url" $base_url "content" .Inner "options" .Options) -}}
+
+    {{- if or (eq site.Params.highlight.copy.enable nil) (site.Params.highlight.copy.enable) -}}
+      {{- partialCached "components/codeblock-copy-button" (dict "filename" $filename) $filename -}}
+    {{- end -}}
+  </div>
+{{- end -}}

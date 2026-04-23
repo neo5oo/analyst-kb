@@ -1,0 +1,76 @@
+baseURL = 'http://localhost:1313/'
+title = 'База знаний по системному анализу'
+theme = 'hextra'
+languageCode = 'ru-RU'
+defaultContentLanguage = 'ru'
+hasCJKLanguage = true
+enableRobotsTXT = true
+enableInlineShortcodes = true
+
+[outputs]
+  home = ['html', 'rss']
+  section = ['html', 'rss']
+  page = ['html']
+
+[params]
+  description = 'База знаний по системному анализу'
+  [params.navbar]
+    displayTitle = true
+    displayLogo = true
+    width = 'wide'
+    [params.navbar.logo]
+      path = 'images/logo.svg'
+      dark = 'images/logo-dark.svg'
+      width = 70
+      height = 70
+
+  [params.theme]
+    default = 'light'
+    displayToggle = true
+
+  [params.search]
+    enable = true
+    type = 'flexsearch'
+    [params.search.flexsearch]
+      index = 'content'
+      tokenize = 'forward'
+
+  [params.page]
+    width = 'wide'
+    [params.page.toc]
+      displayTags = true
+
+  [params.footer]
+    enable = true
+    displayCopyright = true
+    displayPoweredBy = true
+    width = 'wide'
+
+  [params.editURL]
+    enable = false
+
+[menu]
+  [[menu.main]]
+    name = 'Поиск'
+    weight = 1
+    [menu.main.params]
+      type = 'search'
+  [[menu.main]]
+    name = 'Тема'
+    weight = 2
+    [menu.main.params]
+      type = 'theme-toggle'
+      label = false
+  [[menu.main]]
+    name = 'Язык'
+    weight = 3
+    [menu.main.params]
+      type = 'language-switch'
+      label = false
+
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+    [markup.goldmark.extensions]
+      linkify = true

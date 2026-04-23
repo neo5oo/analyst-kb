@@ -1,0 +1,52 @@
+<style>
+  html, body {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+</style>
+<script>
+  (() => {
+    const block = (e) => e.preventDefault();
+    document.addEventListener("copy", block);
+    document.addEventListener("cut", block);
+    document.addEventListener("contextmenu", block);
+    document.addEventListener("selectstart", block);
+    document.addEventListener("dragstart", block);
+    document.addEventListener("keydown", (e) => {
+      const key = (e.key || "").toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && (key === "c" || key === "x" || key === "u" || key === "s" || key === "p")) {
+        e.preventDefault();
+      }
+
+      if (key === "printscreen") {
+        e.preventDefault();
+        flashProtection();
+      }
+    });
+
+    let flashTimer;
+    const flashProtection = () => {
+      document.body.classList.add("kb-screenshot-blur");
+      clearTimeout(flashTimer);
+      flashTimer = setTimeout(() => {
+        document.body.classList.remove("kb-screenshot-blur");
+      }, 700);
+    };
+
+    const addWatermark = () => {
+      if (document.querySelector(".kb-screenshot-watermark")) return;
+      const wm = document.createElement("div");
+      wm.className = "kb-screenshot-watermark";
+      document.body.appendChild(wm);
+      wm.style.display = "block";
+    };
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", addWatermark);
+    } else {
+      addWatermark();
+    }
+  })();
+</script>
