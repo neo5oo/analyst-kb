@@ -1,4 +1,4 @@
-baseURL = 'http://localhost:1313/'
+baseURL = 'https://system-analyst.space/'
 title = 'База знаний по системному анализу'
 theme = 'hextra'
 languageCode = 'ru-RU'
