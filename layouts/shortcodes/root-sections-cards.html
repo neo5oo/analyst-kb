@@ -1,0 +1,49 @@
+{{- $sections := where .Site.Home.Sections "Params.sidebar.exclude" "!=" true -}}
+{{- $sections = where $sections "Draft" "!=" true -}}
+{{- $sections = where $sections "Section" "!=" "index" -}}
+{{- $sections = sort (sort $sections "LinkTitle" "asc") "Weight" "asc" -}}
+{{- $iconMap := dict
+  "introduction" "academic-cap"
+  "requirements" "document-text"
+  "modeling" "puzzle"
+  "data-and-sql" "collection"
+  "architecture-and-design" "cube"
+  "api-and-integrations" "link"
+  "message-brokers-queues" "inbox"
+  "task-and-artefacts" "clipboard-list"
+  "general" "chip"
+  "glossary" "book-open"
+-}}
+{{- $subtitleMap := dict
+  "introduction" "Роль аналитика, SDLC, методологии, артефакты и коммуникация в команде"
+  "requirements" "User Story, Use Case, типы требований, сбор, приоритизация и документы BRD/FRD/SRS"
+  "modeling" "BPMN, UML, C4, EPC, IDEF, Event Storming и смежные нотации"
+  "data-and-sql" "Реляционные и NoSQL БД, SQL, транзакции, индексы и проектирование схемы"
+  "architecture-and-design" "Стили системы, паттерны, компромиссы, масштабирование и типовые доменные решения"
+  "api-and-integrations" "REST, gRPC, GraphQL, SOAP, вебхуки, тестирование, безопасность и форматы обмена"
+  "message-brokers-queues" "Kafka, RabbitMQ, гарантии доставки, ретенция и интеграционные шаблоны"
+  "general" "Модель OSI, логические задачи, термины по доменам и основы языков программирования"
+  "glossary" "Термины и роли для единого понимания формулировок в команде"
+-}}
+{{- if gt (len $sections) 0 -}}
+  <div class="hextra-cards hx:mt-4 hx:gap-4 hx:grid not-prose" style="--hextra-cards-grid-cols: 4;">
+    {{- range $sections -}}
+      {{- $title := partial "utils/title" . -}}
+      {{- $sectionKey := .Section -}}
+      {{- $icon := index $iconMap $sectionKey | default "book-open" -}}
+      {{- $mappedSubtitle := index $subtitleMap $sectionKey | default "" -}}
+      {{- $description := (.Description | default .Params.description | default "") | plainify | replaceRE "\\s+" " " | strings.TrimSpace -}}
+      {{- $subtitle := $mappedSubtitle | default $description -}}
+      {{- if and $subtitle (gt (strings.CountRunes $subtitle) 120) -}}
+        {{- $subtitle = printf "%s..." (strings.Substr $subtitle 0 120) -}}
+      {{- end -}}
+      {{- partial "shortcodes/card" (dict
+        "page" .Page
+        "link" .RelPermalink
+        "title" $title
+        "icon" $icon
+        "subtitle" $subtitle
+      ) -}}
+    {{- end -}}
+  </div>
+{{- end -}}

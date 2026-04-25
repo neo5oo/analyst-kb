@@ -48,5 +48,39 @@
     } else {
       addWatermark();
     }
+
+    const isVisible = (el) => {
+      const rect = el.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+
+    const ensureSidebarItemVisible = (detailsEl) => {
+      const scrollContainer = detailsEl.closest(".hextra-sidebar-container")?.querySelector(".hextra-scrollbar");
+      if (!scrollContainer || !detailsEl.open) return;
+
+      const alignVisibleArea = () => {
+        const targetCandidates = Array.from(detailsEl.querySelectorAll("a, summary")).filter(isVisible);
+        const targetEl = targetCandidates[targetCandidates.length - 1] || detailsEl;
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const targetRect = targetEl.getBoundingClientRect();
+        const bottomOffset = 28;
+        const topOffset = 12;
+
+        if (targetRect.bottom > containerRect.bottom - bottomOffset) {
+          scrollContainer.scrollTop += targetRect.bottom - (containerRect.bottom - bottomOffset);
+        } else if (targetRect.top < containerRect.top + topOffset) {
+          scrollContainer.scrollTop -= (containerRect.top + topOffset) - targetRect.top;
+        }
+      };
+
+      requestAnimationFrame(() => requestAnimationFrame(alignVisibleArea));
+    };
+
+    document.addEventListener("toggle", (event) => {
+      const detailsEl = event.target;
+      if (!(detailsEl instanceof HTMLDetailsElement)) return;
+      if (!detailsEl.classList.contains("kb-tree-details")) return;
+      ensureSidebarItemVisible(detailsEl);
+    }, true);
   })();
 </script>

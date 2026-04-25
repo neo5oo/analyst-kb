@@ -1,0 +1,29 @@
+{{ define "main" }}
+  <div class='hx:mx-auto hx:flex hextra-max-page-width'>
+    {{ partial "sidebar.html" (dict "context" . "disableSidebar" true "displayPlaceholder" true) }}
+    {{ partial "toc.html" (dict "Params" (dict "toc" false)) }}
+    <article class="hx:w-full hx:break-words hx:flex hx:min-h-[calc(100vh-var(--navbar-height))] hx:min-w-0 hx:justify-center hx:pb-8 hx:pr-[calc(env(safe-area-inset-right)-1.5rem)]">
+      <main id="content" class="hx:w-full hx:min-w-0 hextra-max-content-width hx:px-6 hx:pt-4 hx:md:px-12">
+        {{ if .Title }}<h1 class="hx:text-center hx:mt-2 hx:text-4xl hx:font-bold hx:tracking-tight hx:text-slate-900 hx:dark:text-slate-100">{{ .Title }}</h1>{{ end }}
+        <div class="content">
+          {{- with (index hugo.Data .Site.Language.Lang "termbase") -}}
+          <dl class="not-prose hx:mt-6 hx:grid hx:gap-4 hx:sm:grid-cols-2 hx:xl:grid-cols-3">
+            {{- range sort . "term" -}}
+            <div class="hextra-card hx:flex hx:h-full hx:flex-col hx:rounded-xl hx:border hx:border-gray-200 hx:bg-white/90 hx:p-4 hx:shadow-[0_1px_2px_rgba(15,23,42,0.04)] hx:transition hx:dark:border-neutral-800 hx:dark:bg-neutral-900">
+              <dt class="hx:text-base hx:font-semibold hx:leading-tight hx:text-slate-900 hx:dark:text-slate-100">
+                {{- .term }}{{ with .abbr }} <span class="hx:text-sm hx:font-medium hx:text-gray-500 hx:dark:text-gray-400">({{ . }})</span>{{ end -}}
+              </dt>
+              <dd class="hx:mt-2 hx:text-sm hx:leading-6 hx:text-gray-600 hx:dark:text-gray-300">
+                {{- .definition | markdownify -}}
+              </dd>
+            </div>
+            {{- end -}}
+          </dl>
+          {{- else -}}
+          <p class="hx:mt-6 hx:text-sm hx:text-gray-500 hx:dark:text-gray-400">Термины для глоссария пока не добавлены.</p>
+          {{- end -}}
+        </div>
+      </main>
+    </article>
+  </div>
+{{ end }}
