@@ -16,34 +16,36 @@
   {{- end -}}
 {{- end -}}
 
-<aside class="hextra-sidebar-container hx:flex hx:flex-col hx:print:hidden hx:md:top-16 hx:md:shrink-0 hx:md:w-72 hx:md:self-start hx:max-md:[transform:translate3d(0,-100%,0)] {{ $sidebarClass }}">
+<aside class="hextra-sidebar-container kb-sidebar hx:flex hx:flex-col hx:print:hidden hx:md:top-16 hx:md:shrink-0 hx:md:min-h-0 hx:md:w-72 hx:md:self-start hx:md:pt-3 hx:md:pb-5 hx:max-md:[transform:translate3d(0,-100%,0)] {{ $sidebarClass }}">
   {{- if (site.Params.search.enable | default true) -}}
     <div class="hx:px-4 hx:pt-4 hx:md:hidden">
       {{ partial "search.html" (dict "location" "sidebar") }}
     </div>
   {{- end -}}
 
-  <div class="hextra-scrollbar hx:overflow-y-auto hx:overflow-x-hidden hx:p-4 hx:pb-20 hx:grow hx:md:h-[calc(100vh-var(--navbar-height)-var(--menu-height))]">
+  <div class="hextra-scrollbar kb-sidebar__scroll hx:min-h-0 hx:overflow-y-auto hx:overflow-x-hidden hx:px-3 hx:pb-5 hx:pt-2 hx:grow hx:md:h-[calc(100vh-var(--navbar-height)-max(0.75rem,env(safe-area-inset-bottom,0px))-2rem)]">
     {{- if $disableSidebar -}}
       {{- if $displayPlaceholder }}<div class="hx:max-xl:hidden hx:h-0 hx:w-72 hx:shrink-0"></div>{{ end -}}
       {{ .context.Store.Set "enableFooterSwitches" true }}
     {{- else -}}
-      <ul class="hx:flex hx:flex-col hx:gap-1">
-        {{- $rootSections := where site.Home.Sections "Params.sidebar.exclude" "!=" true -}}
-        {{- $rootSections = where $rootSections "Draft" "!=" true -}}
-        {{- $rootSections = where $rootSections "Section" "!=" "index" -}}
-        {{- $rootPages := where site.Home.RegularPages "Params.sidebar.exclude" "!=" true -}}
-        {{- $rootPages = where $rootPages "Draft" "!=" true -}}
-        {{- $rootItems := union $rootSections $rootPages -}}
-        {{- $rootItems = sort (sort $rootItems "LinkTitle" "asc") "Weight" "asc" -}}
-        {{- range $rootItems -}}
-          {{- if .IsSection -}}
-            {{- template "kb-sidebar-section" dict "section" . "current" $current "level" 0 -}}
-          {{- else -}}
-            <li>{{ template "kb-sidebar-link" dict "node" . "current" $current "level" 0 }}</li>
+      <nav class="kb-sidebar__nav" aria-label="Разделы базы знаний">
+        <ul class="kb-sidebar__root hx:flex hx:flex-col hx:gap-0.5">
+          {{- $rootSections := where site.Home.Sections "Params.sidebar.exclude" "!=" true -}}
+          {{- $rootSections = where $rootSections "Draft" "!=" true -}}
+          {{- $rootSections = where $rootSections "Section" "!=" "index" -}}
+          {{- $rootPages := where site.Home.RegularPages "Params.sidebar.exclude" "!=" true -}}
+          {{- $rootPages = where $rootPages "Draft" "!=" true -}}
+          {{- $rootItems := union $rootSections $rootPages -}}
+          {{- $rootItems = sort (sort $rootItems "LinkTitle" "asc") "Weight" "asc" -}}
+          {{- range $rootItems -}}
+            {{- if .IsSection -}}
+              {{- template "kb-sidebar-section" dict "section" . "current" $current "level" 0 -}}
+            {{- else -}}
+              <li class="kb-sidebar__item">{{ template "kb-sidebar-link" dict "node" . "current" $current "level" 0 }}</li>
+            {{- end -}}
           {{- end -}}
-        {{- end -}}
-      </ul>
+        </ul>
+      </nav>
     {{- end -}}
   </div>
 </aside>
@@ -53,16 +55,14 @@
   {{- $current := .current -}}
   {{- $level := .level -}}
   {{- $active := eq (strings.TrimSuffix "/" $current.RelPermalink) (strings.TrimSuffix "/" $node.RelPermalink) -}}
-  {{- $indentRem := add 0.5 (mul $level 0.75) -}}
+  {{- $indentRem := add 0.625 (mul $level 0.6875) -}}
   <a
     href="{{ $node.RelPermalink }}"
-    style="padding-inline-start: {{ $indentRem }}rem;"
-    class="hx:block hx:rounded-sm hx:py-1.5 hx:text-sm hx:transition-colors [word-break:break-word]
-    {{ if $active }}
-      hx:bg-primary-100 hx:font-semibold hx:text-primary-800 hx:dark:bg-primary-400/10 hx:dark:text-primary-400
-    {{ else }}
-      hx:text-gray-600 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:text-neutral-300 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50
-    {{ end }}"
+    data-kb-depth="{{ $level }}"
+    style="--kb-nav-pad: {{ $indentRem }}rem;"
+    class="kb-nav-link hx:block hx:rounded-lg hx:py-2 hx:pr-2.5 hx:leading-snug hx:transition-[color,background-color,box-shadow] hx:duration-150 [word-break:break-word]
+    {{- if $active }} kb-nav-link--active{{ end -}}
+    {{- if eq $level 0 }} kb-nav-link--root{{ end -}}"
   >{{ partial "utils/title" $node }}</a>
 {{- end -}}
 
@@ -81,21 +81,23 @@
   {{- $hasChildren := gt (len $children) 0 -}}
   {{- $open := or ($section.IsAncestor $current) (eq (strings.TrimSuffix "/" $current.RelPermalink) (strings.TrimSuffix "/" $section.RelPermalink)) -}}
 
-  <li class="hx:flex hx:flex-col">
+  <li class="kb-sidebar__item hx:flex hx:flex-col">
     {{- if $hasChildren -}}
-      <details class="hx:group kb-tree-details" {{ if $open }}open{{ end }}>
-        <summary class="hx:list-none hx:flex hx:items-center hx:justify-between hx:gap-2 hx:cursor-pointer hx:rounded-sm hx:py-1.5 hx:transition-colors hover:hx:bg-gray-100 hx:dark:hover:bg-primary-100/5">
+      <details class="kb-tree-details hx:group" {{ if $open }}open{{ end }}>
+        <summary class="kb-nav-summary hx:list-none hx:flex hx:items-center hx:justify-between hx:gap-2 hx:cursor-pointer hx:rounded-lg hx:py-0.5 hx:pr-1 hx:transition-colors hx:duration-150">
           <span class="hx:min-w-0 hx:grow">
             {{- template "kb-sidebar-link" dict "node" $section "current" $current "level" $level -}}
           </span>
-          <span class="kb-tree-chevron hx:mr-2 hx:shrink-0 hx:text-gray-500 hx:transition-transform">›</span>
+          <span class="kb-tree-chevron hx:mr-1 hx:flex hx:shrink-0 hx:items-center hx:justify-center hx:text-slate-400 hx:dark:text-neutral-500" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="kb-tree-chevron-svg"><path d="M9 18l6-6-6-6"/></svg>
+          </span>
         </summary>
-        <ul class="hx:ltr:ml-2 hx:rtl:mr-2 hx:border-l hx:border-gray-200 hx:dark:border-neutral-800">
+        <ul class="kb-nav-branch hx:flex hx:flex-col hx:gap-0.5">
           {{- range $children -}}
             {{- if .IsSection -}}
               {{- template "kb-sidebar-section" dict "section" . "current" $current "level" (add $level 1) -}}
             {{- else -}}
-              <li>{{ template "kb-sidebar-link" dict "node" . "current" $current "level" (add $level 1) }}</li>
+              <li class="kb-sidebar__item">{{ template "kb-sidebar-link" dict "node" . "current" $current "level" (add $level 1) }}</li>
             {{- end -}}
           {{- end -}}
         </ul>
