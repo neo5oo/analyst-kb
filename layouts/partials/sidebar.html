@@ -27,28 +27,36 @@
     {{- if $disableSidebar -}}
       {{- if $displayPlaceholder }}<div class="hx:max-xl:hidden hx:h-0 hx:w-72 hx:shrink-0"></div>{{ end -}}
       {{ .context.Store.Set "enableFooterSwitches" true }}
+      <nav class="kb-sidebar__nav hx:md:hidden" aria-label="Разделы базы знаний">
+        {{ template "kb-sidebar-root-tree" dict "current" $current }}
+      </nav>
     {{- else -}}
       <nav class="kb-sidebar__nav" aria-label="Разделы базы знаний">
-        <ul class="kb-sidebar__root hx:flex hx:flex-col hx:gap-0.5">
-          {{- $rootSections := where site.Home.Sections "Params.sidebar.exclude" "!=" true -}}
-          {{- $rootSections = where $rootSections "Draft" "!=" true -}}
-          {{- $rootSections = where $rootSections "Section" "!=" "index" -}}
-          {{- $rootPages := where site.Home.RegularPages "Params.sidebar.exclude" "!=" true -}}
-          {{- $rootPages = where $rootPages "Draft" "!=" true -}}
-          {{- $rootItems := union $rootSections $rootPages -}}
-          {{- $rootItems = sort (sort $rootItems "LinkTitle" "asc") "Weight" "asc" -}}
-          {{- range $rootItems -}}
-            {{- if .IsSection -}}
-              {{- template "kb-sidebar-section" dict "section" . "current" $current "level" 0 -}}
-            {{- else -}}
-              <li class="kb-sidebar__item">{{ template "kb-sidebar-link" dict "node" . "current" $current "level" 0 }}</li>
-            {{- end -}}
-          {{- end -}}
-        </ul>
+        {{ template "kb-sidebar-root-tree" dict "current" $current }}
       </nav>
     {{- end -}}
   </div>
 </aside>
+
+{{- define "kb-sidebar-root-tree" -}}
+  {{- $current := .current -}}
+  <ul class="kb-sidebar__root hx:flex hx:flex-col hx:gap-0.5">
+    {{- $rootSections := where site.Home.Sections "Params.sidebar.exclude" "!=" true -}}
+    {{- $rootSections = where $rootSections "Draft" "!=" true -}}
+    {{- $rootSections = where $rootSections "Section" "!=" "index" -}}
+    {{- $rootPages := where site.Home.RegularPages "Params.sidebar.exclude" "!=" true -}}
+    {{- $rootPages = where $rootPages "Draft" "!=" true -}}
+    {{- $rootItems := union $rootSections $rootPages -}}
+    {{- $rootItems = sort (sort $rootItems "LinkTitle" "asc") "Weight" "asc" -}}
+    {{- range $rootItems -}}
+      {{- if .IsSection -}}
+        {{- template "kb-sidebar-section" dict "section" . "current" $current "level" 0 -}}
+      {{- else -}}
+        <li class="kb-sidebar__item">{{ template "kb-sidebar-link" dict "node" . "current" $current "level" 0 }}</li>
+      {{- end -}}
+    {{- end -}}
+  </ul>
+{{- end -}}
 
 {{- define "kb-sidebar-link" -}}
   {{- $node := .node -}}
