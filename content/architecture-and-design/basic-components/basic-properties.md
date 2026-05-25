@@ -1,5 +1,5 @@
 ---
-title: Архитектура информационных систем
+title: Основные свойства ИС
 weight: 30
 draft: false
 description: "В этой статье разберём три важных свойства: Тип взаимодействия (синхронное (RPC) vs асинхронное (события/очереди)), Характер нагрузки (Data-intensive vs Compute-intensive), Профиль операций (Read ratio vs Write ratio)."
