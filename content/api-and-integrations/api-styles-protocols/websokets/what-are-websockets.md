@@ -320,7 +320,7 @@ const socket = new WebSocket('wss://example.com/ws', ['stomp', 'wamp']);
 
 ### Origin проверка
 
-Сервер должен проверять заголовок `Origin`, чтобы предотвратить cross-site WebSocket hijacking.
+Сервер должен проверять заголовок `Origin`, чтобы предотвратить cross-site WebSocket hacking.
 
 ```javascript
 server.on('upgrade', (request, socket) => {
