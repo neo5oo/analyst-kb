@@ -1,7 +1,8 @@
 ---
 title: Poison Message
-weight: 110
+weight: 100
 draft: false
+description: "Poison message, retry, DLQ, offset commit strategy и процесс разбора проблемных сообщений."
 quiz:
   title: "Проверка знаний"
   passingScore: 3

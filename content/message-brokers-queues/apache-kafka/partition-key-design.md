@@ -1,7 +1,8 @@
 ---
 title: Partition Key Design
-weight: 70
+weight: 30
 draft: false
+description: "Как выбрать partition key: порядок, нагрузка, hot partition, масштабирование и compaction."
 quiz:
   title: "Проверка знаний"
   passingScore: 3

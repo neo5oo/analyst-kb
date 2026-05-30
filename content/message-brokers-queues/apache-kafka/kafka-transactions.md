@@ -2,6 +2,7 @@
 title: Kafka Transactions
 weight: 90
 draft: false
+description: "Атомарная запись внутри Kafka, transactional.id, read_committed, exactly-once и границы применения."
 quiz:
   title: "Проверка знаний"
   passingScore: 3

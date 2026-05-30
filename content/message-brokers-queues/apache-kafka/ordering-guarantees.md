@@ -1,7 +1,8 @@
 ---
 title: Ordering Guarantees
-weight: 80
+weight: 40
 draft: false
+description: "Границы гарантий порядка Kafka: partition, key, producer, consumer, DLQ и state machine."
 quiz:
   title: "Проверка знаний"
   passingScore: 3

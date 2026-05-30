@@ -1,7 +1,8 @@
 ---
 title: Log Compaction
-weight: 100
+weight: 70
 draft: false
+description: "Compacted topic, последнее состояние по key, tombstone, CDC, KTable и ограничения."
 quiz:
   title: "Проверка знаний"
   passingScore: 3

@@ -1,6 +1,6 @@
 ---
 title: Consumer Group Rebalancing
-weight: 60
+weight: 110
 draft: false
 quiz:
   title: "Проверка знаний"
